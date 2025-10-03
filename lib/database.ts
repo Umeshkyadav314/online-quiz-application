@@ -1,8 +1,19 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 
-const dbPath = path.join(process.cwd(), 'quiz.db')
-const db = new Database(dbPath)
+// Check if we're in Vercel environment
+const isVercel = process.env.VERCEL === '1'
+
+let db: Database.Database
+
+if (isVercel) {
+  // For Vercel, use in-memory database
+  db = new Database(':memory:')
+} else {
+  // For local development, use file-based database
+  const dbPath = path.join(process.cwd(), 'quiz.db')
+  db = new Database(dbPath)
+}
 
 // Initialize database tables
 function initDatabase() {
@@ -131,10 +142,67 @@ function initDatabase() {
   `)
 
     console.log('Database initialized successfully')
+    
+    // Add sample data if in Vercel environment (in-memory database)
+    if (isVercel) {
+        try {
+            // Insert sample admin user
+            userQueries.create.run('admin@example.com', 'admin123', 'Admin User', 'admin')
+            
+            // Insert sample questions
+            const sampleQuestions = [
+                {
+                    subject_id: 1,
+                    topic_id: 1,
+                    text: "What is 2 + 2?",
+                    options: JSON.stringify(["3", "4", "5", "6"]),
+                    correct_index: 1,
+                    difficulty: 'easy',
+                    explanation: "Basic addition: 2 + 2 = 4",
+                    created_by: 'admin@example.com'
+                },
+                {
+                    subject_id: 2,
+                    topic_id: 4,
+                    text: "What is the chemical symbol for water?",
+                    options: JSON.stringify(["H2O", "CO2", "NaCl", "O2"]),
+                    correct_index: 0,
+                    difficulty: 'easy',
+                    explanation: "Water is composed of 2 hydrogen atoms and 1 oxygen atom",
+                    created_by: 'admin@example.com'
+                }
+            ]
+            
+            sampleQuestions.forEach(q => {
+                questionQueries.create.run(
+                    q.subject_id, q.topic_id, q.text, q.options, 
+                    q.correct_index, q.difficulty, q.explanation, q.created_by
+                )
+            })
+            
+            console.log('Sample data inserted for Vercel environment')
+        } catch (error) {
+            console.log('Sample data already exists or error inserting:', error)
+        }
+    }
 }
 
-// Initialize database first
-initDatabase()
+// Initialize database with error handling
+try {
+    initDatabase()
+} catch (error) {
+    console.error('Database initialization error:', error)
+    // In case of error, try to recreate the database
+    if (!isVercel) {
+        try {
+            db.close()
+            db = new Database(path.join(process.cwd(), 'quiz.db'))
+            initDatabase()
+        } catch (retryError) {
+            console.error('Database retry failed:', retryError)
+        }
+    }
+}
 
 // User operations
 export const userQueries = {
