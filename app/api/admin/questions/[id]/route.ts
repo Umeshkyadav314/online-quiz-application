@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 import { getUserFromRequest } from "@/lib/auth"
 import { questionQueries, userQueries } from "@/lib/database"
 
@@ -8,7 +10,7 @@ export async function PUT(
 ) {
   try {
     const user = await getUserFromRequest()
-    
+
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -20,14 +22,14 @@ export async function PUT(
     }
 
     const { subjectId, topicId, text, options, correctIndex, difficulty, explanation } = await request.json()
-    
+
     if (!subjectId || !text || !options || correctIndex === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     const optionsJson = JSON.stringify(options)
     questionQueries.update.run(subjectId, topicId, text, optionsJson, correctIndex, difficulty || 'medium', explanation, parseInt(params.id))
-    
+
     return NextResponse.json({ message: "Question updated successfully" })
   } catch (error) {
     console.error("Error updating question:", error)
@@ -41,7 +43,7 @@ export async function DELETE(
 ) {
   try {
     const user = await getUserFromRequest()
-    
+
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -53,7 +55,7 @@ export async function DELETE(
     }
 
     questionQueries.delete.run(parseInt(params.id))
-    
+
     return NextResponse.json({ message: "Question deleted successfully" })
   } catch (error) {
     console.error("Error deleting question:", error)
